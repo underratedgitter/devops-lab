@@ -1,0 +1,79 @@
+name: Validate Repository Content
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-python:
+    name: Validate Python Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check Python Syntax
+        run: |
+          python3 -m py_compile python/*.py docker/examples/python-app/*.py
+
+  validate-shell:
+    name: Validate Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Shellcheck Syntax Verification
+        run: |
+          bash -n scripts/*.sh
+
+  validate-yaml-json:
+    name: Validate YAML and JSON Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python for Validation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Yaml Validator
+        run: pip install pyyaml
+
+      - name: Validate YAML files
+        run: |
+          python3 -c "
+          import glob, yaml, sys
+          files = glob.glob('**/*.yml', recursive=True) + glob.glob('**/*.yaml', recursive=True)
+          for f in files:
+              try:
+                  yaml.safe_load(open(f))
+                  print(f'OK: {f}')
+              except Exception as e:
+                  print(f'ERROR in {f}: {e}', file=sys.stderr)
+                  sys.exit(1)
+          "
+
+      - name: Validate JSON files
+        run: |
+          python3 -c "
+          import glob, json, sys
+          files = glob.glob('**/*.json', recursive=True)
+          for f in files:
+              try:
+                  json.load(open(f))
+                  print(f'OK: {f}')
+              except Exception as e:
+                  print(f'ERROR in {f}: {e}', file=sys.stderr)
+                  sys.exit(1)
+          "

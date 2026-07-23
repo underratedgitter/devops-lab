@@ -1,0 +1,29 @@
+name: README Structure Validation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify-links:
+    name: Check README File References
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify relative links in README
+        run: |
+          python3 -c "
+          import re, os, sys
+          readme = open('README.md').read()
+          links = re.findall(r'\[.*?\]\((?!http|#)(.*?)\)', readme)
+          missing = []
+          for link in links:
+              clean_link = link.split('#')[0]
+              if clean_link and not os.path.exists(clean_link):
+                  missing.append(clean_link)
+          if missing:
+              print(f'Missing files referenced in README: {missing}', file=sys.stderr)
+              sys.exit(1)
+          print('All README file references verified successfully!')
+          "

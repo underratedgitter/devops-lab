@@ -1,0 +1,62 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# ===== Terraform =====
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# ===== Docker =====
+.docker/
+
+# ===== Node (if any tooling) =====
+node_modules/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Secrets (never commit) =====
+.env
+.env.*
+*.pem
+*.key
+secrets/

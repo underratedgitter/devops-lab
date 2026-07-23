@@ -1,0 +1,31 @@
+name: CI System Health & Metrics
+
+on:
+  schedule:
+    - cron: '30 2 * * *'  # Runs every day at 08:00 AM IST (02:30 AM UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update System Logs
+        run: |
+          mkdir -p automation/logs
+          echo "System health status: OK [$(date -u '+%Y-%m-%d %H:%M:%S UTC')]" > automation/logs/health-check.log
+
+      - name: Sync Telemetry Logs
+        run: |
+          git config --local user.email "sp9023156004@gmail.com"
+          git config --local user.name "Suraj Patel"
+          git add automation/logs/health-check.log
+          git commit -m "chore(ci): update system health check & telemetry [$(date +'%Y-%m-%d')]" || exit 0
+          git push

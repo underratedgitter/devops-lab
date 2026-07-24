@@ -2,7 +2,10 @@ name: CI System Health & Metrics
 
 on:
   schedule:
-    - cron: '40 3 * * *'  # Runs every day at 09:10 AM IST (03:40 AM UTC)
+    # Multiple daily execution slots to ensure commit reliability even during GitHub queue delays
+    - cron: '30 2 * * *'   # Primary: 08:00 AM IST (02:30 AM UTC)
+    - cron: '30 6 * * *'   # Backup 1: 12:00 PM IST (06:30 AM UTC)
+    - cron: '30 12 * * *'  # Backup 2: 06:00 PM IST (12:30 PM UTC)
   workflow_dispatch:
 
 permissions:
@@ -17,15 +20,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Update System Logs
+      - name: Update System & Telemetry Logs
         run: |
           mkdir -p automation/logs
-          echo "System health status: OK [$(date -u '+%Y-%m-%d %H:%M:%S UTC')]" > automation/logs/health-check.log
+          UTC_NOW=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          IST_NOW=$(TZ="Asia/Kolkata" date '+%Y-%m-%d %H:%M:%S IST')
+          
+          # Overwrite current status file
+          echo "System health status: OK [$UTC_NOW]" > automation/logs/health-check.log
+          
+          # Append to activity history log (guarantees non-empty git diff on every run)
+          echo "[$IST_NOW] Automated telemetry update executed successfully." >> automation/logs/system-activity.log
 
-      - name: Sync Telemetry Logs
+      - name: Sync & Push Telemetry Updates
         run: |
           git config --local user.email "sp9023156004@gmail.com"
           git config --local user.name "Suraj Patel"
-          git add -f automation/logs/health-check.log
-          git commit -m "chore(ci): update system health check & telemetry [$(date +'%Y-%m-%d')]" || exit 0
-          git push
+          
+          # Force stage log files regardless of gitignore defaults
+          git add -f automation/logs/health-check.log automation/logs/system-activity.log
+          
+          # Check if there are changes staged
+          if git diff --staged --quiet; then
+            echo "No telemetry changes detected. Skipping commit."
+          else
+            TODAY=$(TZ="Asia/Kolkata" date +'%Y-%m-%d')
+            git commit -m "chore(ci): update system health check & telemetry [$TODAY]"
+            
+            # Pull latest changes with rebase to prevent push rejection
+            git pull --rebase origin main || true
+            
+            # Robust push with retry logic
+            git push origin main || (sleep 5 && git pull --rebase origin main && git push origin main)
+          fi

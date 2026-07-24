@@ -53,6 +53,8 @@ Thumbs.db
 # ===== Logs =====
 *.log
 logs/
+!automation/logs/
+!automation/logs/*.log
 
 # ===== Secrets (never commit) =====
 .env

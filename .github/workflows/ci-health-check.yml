@@ -26,6 +26,6 @@ jobs:
         run: |
           git config --local user.email "sp9023156004@gmail.com"
           git config --local user.name "Suraj Patel"
-          git add automation/logs/health-check.log
+          git add -f automation/logs/health-check.log
           git commit -m "chore(ci): update system health check & telemetry [$(date +'%Y-%m-%d')]" || exit 0
           git push

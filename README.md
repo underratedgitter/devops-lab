@@ -9,6 +9,17 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white" alt="Kubernetes" />
+  <img src="https://img.shields.io/badge/Helm-0F1689?style=for-the-badge&logo=helm&logoColor=white" alt="Helm" />
+  <img src="https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white" alt="Terraform" />
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" alt="Prometheus" />
+  <img src="https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white" alt="Grafana" />
+  <img src="https://img.shields.io/badge/AWS-FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white" alt="AWS" />
+  <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white" alt="GitHub Actions" />
+</p>
+
+<p align="center">
   <a href="https://github.com/thepatelsuraj/devops-lab/stargazers"><img src="https://img.shields.io/github/stars/thepatelsuraj/devops-lab?style=flat-square&color=yellow" alt="Stars" /></a>
   <a href="https://github.com/thepatelsuraj/devops-lab/network/members"><img src="https://img.shields.io/github/forks/thepatelsuraj/devops-lab?style=flat-square&color=blue" alt="Forks" /></a>
   <a href="https://github.com/thepatelsuraj/devops-lab/blob/main/LICENSE"><img src="https://img.shields.io/github/license/thepatelsuraj/devops-lab?style=flat-square&color=green" alt="License" /></a>
@@ -150,12 +161,12 @@ devops-lab/
 ## 🚀 Mini-Projects Index
 
 | Project | Stack | Status |
-|---------|-------|--------|
+|:---|:---|:---:|
 | Dockerized Python App | Docker, Flask, Redis, PostgreSQL | ✅ Complete |
-| Monitoring Stack | Prometheus, Grafana, Loki | 🔜 Planned |
+| Monitoring Stack | Prometheus, Grafana, Loki | ✅ Complete |
+| CI/CD Pipeline | GitHub Actions, Docker | ✅ Complete |
 | K8s Deployment Lab | Kubernetes, Helm | 🔜 Planned |
 | Terraform AWS Infra | Terraform, AWS | 🔜 Planned |
-| CI/CD Pipeline | GitHub Actions, Docker | 🔜 Planned |
 
 ---
 
@@ -182,6 +193,9 @@ All architecture diagrams are created using [Mermaid](https://mermaid.js.org/) f
 - ☁️ AWS core services overview
 - 🌐 TCP/IP networking fundamentals
 - 📊 Monitoring and observability fundamentals
+- 🔴 Prometheus metrics collection, PromQL, and alerting rules
+- 📈 Grafana dashboard provisioning and alerting
+- 🪵 Loki log aggregation with LogQL pipelines
 - 🐍 Python log analyzer and health checker utilities
 - 🔧 Bash backup, cleanup, and system health scripts
 - 🔒 Linux security hardening checklist

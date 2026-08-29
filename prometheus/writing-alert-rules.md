@@ -78,7 +78,7 @@ A 5xx is your fault. A 4xx is usually the caller's — a broken client, or someo
   expr: rate(http_requests_total[5m]) < 0.01
   for: 10m
   labels:
-    severity: warning
+    severity: info
 ```
 
 Traffic falling to nothing usually means something upstream broke — a load balancer, DNS, an expired certificate. Your service is perfectly healthy and serving nobody. **No error-rate or latency alert can detect this**, because both are ratios over a denominator that just went to zero.

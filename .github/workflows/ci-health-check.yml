@@ -42,25 +42,15 @@ jobs:
           TODAY=$(TZ="Asia/Kolkata" date +'%Y-%m-%d')
           echo "today=${TODAY}" >> "${GITHUB_OUTPUT}"
 
-          if [[ "${{ github.event_name }}" == "schedule" && -f "daily/${TODAY}.md" ]]; then
-            echo "skip=true" >> "${GITHUB_OUTPUT}"
-            echo "Daily automation already completed for ${TODAY}; skipping retry window."
-          else
-            echo "skip=false" >> "${GITHUB_OUTPUT}"
-          fi
-
       - name: Validate Python Syntax
-        if: steps.daily.outputs.skip != 'true'
         run: |
           python3 -m py_compile python/*.py docker/examples/python-app/*.py scripts/*.py
 
       - name: Validate Shell Scripts
-        if: steps.daily.outputs.skip != 'true'
         run: |
           bash -n scripts/*.sh
 
       - name: Validate YAML and JSON Syntax
-        if: steps.daily.outputs.skip != 'true'
         run: |
           python3 -m pip install --quiet pyyaml
           python3 -c "
@@ -86,37 +76,34 @@ jobs:
           "
 
       - name: Generate Daily DevOps Note
-        if: steps.daily.outputs.skip != 'true'
         run: |
           python3 scripts/daily_updater.py
 
-      - name: Update Daily Telemetry Logs
-        if: steps.daily.outputs.skip != 'true'
+      - name: Commit & Push Daily Automation Updates
         run: |
           mkdir -p automation/logs
-          UTC_NOW=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          IST_NOW=$(TZ="Asia/Kolkata" date '+%Y-%m-%d %H:%M:%S IST')
-
-          echo "System health status: OK [$UTC_NOW]" > automation/logs/health-check.log
-          echo "[$IST_NOW] Daily DevOps Lab automation completed successfully." >> automation/logs/system-activity.log
-
-      - name: Commit & Push Daily Automation Updates
-        if: steps.daily.outputs.skip != 'true'
-        run: |
           git config --local user.email "sp9023156004@gmail.com"
           git config --local user.name "Suraj Patel"
 
-          git add daily/*.md
-          git add -f automation/logs/health-check.log automation/logs/system-activity.log
+          for BATCH in 1 2 3; do
+            UTC_NOW=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+            IST_NOW=$(TZ="Asia/Kolkata" date '+%Y-%m-%d %H:%M:%S IST')
 
-          if git diff --staged --quiet; then
-            echo "No daily automation changes detected. Skipping commit."
-          else
-            git commit -m "chore(ci): run daily devops lab automation [${{ steps.daily.outputs.today }}]"
+            echo "System health status: OK [$UTC_NOW]" > automation/logs/health-check.log
+            echo "[$IST_NOW] Daily DevOps Lab automation batch ${BATCH}/3 completed for run ${GITHUB_RUN_ID}." >> automation/logs/system-activity.log
 
-            git push origin main || (
-              echo "Push failed, pulling and retrying..."
-              git pull --rebase origin main &&
-              git push origin main
-            )
-          fi
+            git add daily/*.md
+            git add -f automation/logs/health-check.log automation/logs/system-activity.log
+
+            if git diff --staged --quiet; then
+              echo "No daily automation changes detected for batch ${BATCH}. Skipping commit."
+            else
+              git commit -m "chore(ci): run daily devops lab automation batch ${BATCH} [${{ steps.daily.outputs.today }}]"
+
+              git push origin main || (
+                echo "Push failed, pulling and retrying..."
+                git pull --rebase origin main &&
+                git push origin main
+              )
+            fi
+          done

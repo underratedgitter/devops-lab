@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-Daily Content Generator & Repository Updater — Generates daily learning topics
-and automatically updates existing repository files (README.md, indices).
+Daily Content Generator — Generates daily DevOps learning notes.
 
-Ensures every commit provides genuine technical value and keeps the entire
-repository dynamic and up to date.
+This script intentionally does not update README.md. The scheduled GitHub
+Actions workflow commits the generated daily note and telemetry logs.
 """
 
 import os
-import re
-import sys
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # Sample pool of daily DevOps learning topics and practical tips
 DAILY_TOPICS = [
@@ -105,36 +103,17 @@ terraform force-unlock 5d2b781a-1234-5678-90ab-cdef12345678
 ]
 
 
-def update_readme(today_str, topic_info):
-    """Update the main README.md 'Recent Additions' section automatically."""
-    readme_path = "README.md"
-    if not os.path.exists(readme_path):
-        return
-
-    with open(readme_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    new_addition = f"- 📅 **{today_str}**: Added [{topic_info['topic']}](daily/{today_str}.md) ({topic_info['category']})"
-    
-    # Append under Recent Additions section if present
-    target = "## 📝 Recent Additions\n\n<!-- This section is updated as new content is added -->"
-    if target in content:
-        updated_content = content.replace(target, f"{target}\n\n{new_addition}")
-        with open(readme_path, "w", encoding="utf-8") as f:
-            f.write(updated_content)
-        print("Updated main README.md with recent addition!")
-
-
 def generate_daily_entry():
-    """Generate today's TIL file and update existing README files."""
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    """Generate today's TIL file."""
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    today_str = now.strftime("%Y-%m-%d")
     daily_dir = "daily"
     os.makedirs(daily_dir, exist_ok=True)
     
     file_path = os.path.join(daily_dir, f"{today_str}.md")
     
     # Pick topic based on day of year
-    day_of_year = datetime.now().timetuple().tm_yday
+    day_of_year = now.timetuple().tm_yday
     topic_info = DAILY_TOPICS[day_of_year % len(DAILY_TOPICS)]
     
     content = f"""# Daily DevOps Note — {today_str}
@@ -155,9 +134,6 @@ def generate_daily_entry():
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"Created daily entry: {file_path}")
-
-    # 2. Update existing README.md file
-    update_readme(today_str, topic_info)
 
 
 if __name__ == "__main__":

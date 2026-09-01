@@ -1,19 +1,22 @@
-name: CI System Health & Metrics
+name: Daily DevOps Lab Automation
 
 on:
   schedule:
-    # Multiple daily execution slots to ensure commit reliability even during GitHub queue delays
-    - cron: '30 2 * * *'   # Slot 1: 08:00 AM IST (02:30 AM UTC)
-    - cron: '30 6 * * *'   # Slot 2: 12:00 PM IST (06:30 AM UTC)
-    - cron: '30 12 * * *'  # Slot 3: 06:00 PM IST (12:30 PM UTC)
-    - cron: '30 17 * * *'  # Slot 4: 11:00 PM IST (05:30 PM UTC) - late-night safety net
+    - cron: '30 2 * * *'   # Primary run: 08:00 AM IST
+    - cron: '30 6 * * *'   # Retry window: 12:00 PM IST
+    - cron: '30 12 * * *'  # Retry window: 06:00 PM IST
+    - cron: '30 17 * * *'  # Retry window: 11:00 PM IST
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: daily-devops-lab-automation
+  cancel-in-progress: false
+
 jobs:
-  health-check:
+  daily-automation:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -22,41 +25,95 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Pull Latest Changes Before Write
         run: |
           git config --local user.email "sp9023156004@gmail.com"
           git config --local user.name "Suraj Patel"
-          # Always pull latest before writing to avoid push conflicts
-          git pull --rebase origin main || true
+          git pull --rebase origin main
 
-      - name: Update System & Telemetry Logs
+      - name: Resolve Daily Run State
+        id: daily
+        run: |
+          TODAY=$(TZ="Asia/Kolkata" date +'%Y-%m-%d')
+          echo "today=${TODAY}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${{ github.event_name }}" == "schedule" && -f "daily/${TODAY}.md" ]]; then
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+            echo "Daily automation already completed for ${TODAY}; skipping retry window."
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Validate Python Syntax
+        if: steps.daily.outputs.skip != 'true'
+        run: |
+          python3 -m py_compile python/*.py docker/examples/python-app/*.py scripts/*.py
+
+      - name: Validate Shell Scripts
+        if: steps.daily.outputs.skip != 'true'
+        run: |
+          bash -n scripts/*.sh
+
+      - name: Validate YAML and JSON Syntax
+        if: steps.daily.outputs.skip != 'true'
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 -c "
+          import glob, json, sys, yaml
+
+          for path in glob.glob('**/*.yml', recursive=True) + glob.glob('**/*.yaml', recursive=True):
+              try:
+                  with open(path, encoding='utf-8') as f:
+                      yaml.safe_load(f)
+                  print(f'OK: {path}')
+              except Exception as exc:
+                  print(f'ERROR in {path}: {exc}', file=sys.stderr)
+                  sys.exit(1)
+
+          for path in glob.glob('**/*.json', recursive=True):
+              try:
+                  with open(path, encoding='utf-8') as f:
+                      json.load(f)
+                  print(f'OK: {path}')
+              except Exception as exc:
+                  print(f'ERROR in {path}: {exc}', file=sys.stderr)
+                  sys.exit(1)
+          "
+
+      - name: Generate Daily DevOps Note
+        if: steps.daily.outputs.skip != 'true'
+        run: |
+          python3 scripts/daily_updater.py
+
+      - name: Update Daily Telemetry Logs
+        if: steps.daily.outputs.skip != 'true'
         run: |
           mkdir -p automation/logs
           UTC_NOW=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
           IST_NOW=$(TZ="Asia/Kolkata" date '+%Y-%m-%d %H:%M:%S IST')
 
-          # Overwrite current status file
           echo "System health status: OK [$UTC_NOW]" > automation/logs/health-check.log
+          echo "[$IST_NOW] Daily DevOps Lab automation completed successfully." >> automation/logs/system-activity.log
 
-          # Append to activity history log (guarantees non-empty git diff on every run)
-          echo "[$IST_NOW] Automated telemetry update executed successfully." >> automation/logs/system-activity.log
-
-      - name: Commit & Push Telemetry Updates
+      - name: Commit & Push Daily Automation Updates
+        if: steps.daily.outputs.skip != 'true'
         run: |
           git config --local user.email "sp9023156004@gmail.com"
           git config --local user.name "Suraj Patel"
 
-          # Force stage log files regardless of gitignore defaults
+          git add daily/*.md
           git add -f automation/logs/health-check.log automation/logs/system-activity.log
 
-          # Check if there are changes staged
           if git diff --staged --quiet; then
-            echo "No telemetry changes detected. Skipping commit."
+            echo "No daily automation changes detected. Skipping commit."
           else
-            TODAY=$(TZ="Asia/Kolkata" date +'%Y-%m-%d')
-            git commit -m "chore(ci): update system health check & telemetry [$TODAY]"
+            git commit -m "chore(ci): run daily devops lab automation [${{ steps.daily.outputs.today }}]"
 
-            # Push with retry logic — pull rebase on conflict then retry once
             git push origin main || (
               echo "Push failed, pulling and retrying..."
               git pull --rebase origin main &&

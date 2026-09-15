@@ -2,10 +2,12 @@ name: Daily DevOps Lab Automation
 
 on:
   schedule:
-    - cron: '30 2 * * *'   # Primary run: 08:00 AM IST
-    - cron: '30 6 * * *'   # Retry window: 12:00 PM IST
-    - cron: '30 12 * * *'  # Retry window: 06:00 PM IST
-    - cron: '30 17 * * *'  # Retry window: 11:00 PM IST
+    # Four days a week (Mon–Thu; no runs Fri, Sat, Sun) instead of daily. All slots fall on the
+    # same calendar day in UTC and IST, so the day-of-week field means the same in both.
+    - cron: '30 2 * * 1-4'   # Primary run: 08:00 AM IST
+    - cron: '30 6 * * 1-4'   # Retry window: 12:00 PM IST
+    - cron: '30 12 * * 1-4'  # Retry window: 06:00 PM IST
+    - cron: '30 17 * * 1-4'  # Retry window: 11:00 PM IST
   workflow_dispatch:
 
 permissions:

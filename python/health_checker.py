@@ -61,6 +61,13 @@ class HealthResult:
     checked_at: str
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Leave 3xx responses unfollowed so they can be checked as-is."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def check_endpoint(config: EndpointConfig) -> HealthResult:
     """Check a single HTTP endpoint and return the result.
 
@@ -75,19 +82,24 @@ def check_endpoint(config: EndpointConfig) -> HealthResult:
     # Create SSL context that verifies certificates
     ssl_context = ssl.create_default_context()
 
+    start_time = time.monotonic()
     try:
-        start_time = time.monotonic()
         req = urllib.request.Request(
             config.url,
             method="GET",
             headers={"User-Agent": "devops-lab-health-checker/1.0"},
         )
-        response = urllib.request.urlopen(
-            req, timeout=config.timeout, context=ssl_context
-        )
+        handlers = [urllib.request.HTTPSHandler(context=ssl_context)]
+        # urlopen follows redirects, so an expected 301/302 could never match:
+        # the check saw the final page's 200 instead. Only stop following them
+        # when a redirect is what the caller is asserting.
+        if 300 <= config.expected_status < 400:
+            handlers.append(_NoRedirect())
+        opener = urllib.request.build_opener(*handlers)
+        with opener.open(req, timeout=config.timeout) as response:
+            status_code = response.getcode()
         elapsed_ms = (time.monotonic() - start_time) * 1000
 
-        status_code = response.getcode()
         is_healthy = status_code == config.expected_status
 
         return HealthResult(
@@ -102,13 +114,17 @@ def check_endpoint(config: EndpointConfig) -> HealthResult:
 
     except urllib.error.HTTPError as e:
         elapsed_ms = (time.monotonic() - start_time) * 1000
+        e.close()
+        # 4xx/5xx and unfollowed 3xx arrive as HTTPError; they are still a
+        # match when that status is exactly what was expected (e.g. 404, 301).
+        is_healthy = e.code == config.expected_status
         return HealthResult(
             url=config.url,
-            status="unhealthy",
+            status="healthy" if is_healthy else "unhealthy",
             status_code=e.code,
             response_time_ms=round(elapsed_ms, 2),
             expected_status=config.expected_status,
-            error_message=f"HTTP {e.code}: {e.reason}",
+            error_message=None if is_healthy else f"HTTP {e.code}: {e.reason}",
             checked_at=checked_at,
         )
 
@@ -179,17 +195,14 @@ def run_checks(
     """Run health checks concurrently and return results."""
     results = []
 
-    with ThreadPoolExecutor(max_workers=min(max_workers, len(configs))) as executor:
-        future_to_config = {
-            executor.submit(check_endpoint, config): config for config in configs
+    with ThreadPoolExecutor(max_workers=max(1, min(max_workers, len(configs)))) as executor:
+        future_to_index = {
+            executor.submit(check_endpoint, config): i for i, config in enumerate(configs)
         }
-        for future in as_completed(future_to_config):
-            results.append(future.result())
+        indexed = [(future_to_index[future], future.result()) for future in as_completed(future_to_index)]
 
-    # Sort by original order (URL)
-    url_order = {config.url: i for i, config in enumerate(configs)}
-    results.sort(key=lambda r: url_order.get(r.url, 0))
-
+    # Restore input order by position; keying on URL misordered repeated URLs.
+    results = [result for _, result in sorted(indexed, key=lambda pair: pair[0])]
     return results
 
 

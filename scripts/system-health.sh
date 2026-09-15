@@ -37,7 +37,10 @@ echo ""
 
 # 3. Disk Usage
 echo -e "${BOLD}[3/5] Disk Usage (Filesystems > 80% filled flagged)${RESET}"
-df -h | grep -E '^/dev/' | while read -r line; do
+# -P keeps each filesystem on one line (long device names otherwise wrap and
+# shift the columns); `|| true` stops pipefail from ending the script when no
+# /dev/ filesystems exist, as inside most containers.
+{ df -Ph | grep -E '^/dev/' || true; } | while read -r line; do
   USAGE="$(echo "${line}" | awk '{print $5}' | sed 's/%//')"
   MOUNT="$(echo "${line}" | awk '{print $6}')"
   if [[ "${USAGE}" -gt 80 ]]; then

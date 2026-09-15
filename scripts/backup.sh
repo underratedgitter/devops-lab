@@ -75,6 +75,15 @@ if [[ ! -d "${SOURCE_DIR}" ]]; then
   exit 1
 fi
 
+if ! [[ "${RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
+  log "ERROR" "${RED}Retention must be a whole number of days: ${RETENTION_DAYS}${NC}"
+  exit 1
+fi
+
+# Resolve to an absolute path: with "-s ." or "-s dir/", basename/dirname gave
+# "." and produced archives named "._backup_*" of the wrong directory level.
+SOURCE_DIR="$(cd "${SOURCE_DIR}" && pwd)"
+
 # Prepare destination and log file
 mkdir -p "${DEST_DIR}"
 LOG_FILE="${DEST_DIR}/backup.log"
@@ -94,6 +103,8 @@ if tar -czf "${BACKUP_PATH}" -C "$(dirname "${SOURCE_DIR}")" "${FOLDER_NAME}"; t
   SIZE="$(du -h "${BACKUP_PATH}" | cut -f1)"
   log "INFO" "${GREEN}Backup completed successfully! Size: ${SIZE}${NC}"
 else
+  # Don't leave a truncated archive that looks like a valid backup.
+  rm -f "${BACKUP_PATH}"
   log "ERROR" "${RED}Backup failed during compression!${NC}"
   exit 1
 fi

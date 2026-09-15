@@ -82,10 +82,11 @@ def extract_error_message(line: str) -> str:
     for pattern in TIMESTAMP_PATTERNS:
         cleaned = pattern.sub("", cleaned)
 
-    # Remove PIDs, IPs, and hex addresses
-    cleaned = re.sub(r"\b\d{1,5}\b", "<N>", cleaned)  # Short numbers (PIDs, ports)
+    # Remove IPs, hex addresses, and PIDs. IPs and hex go first: replacing short
+    # numbers first turned 10.0.0.1 into <N>.<N>.<N>.<N>, so the IP rule never matched.
     cleaned = re.sub(r"\b\d+\.\d+\.\d+\.\d+\b", "<IP>", cleaned)  # IPs
     cleaned = re.sub(r"0x[0-9a-fA-F]+", "<HEX>", cleaned)  # Hex addresses
+    cleaned = re.sub(r"\b\d{1,5}\b", "<N>", cleaned)  # Short numbers (PIDs, ports)
 
     # Trim to a reasonable length for grouping
     cleaned = cleaned.strip()
@@ -96,7 +97,7 @@ def extract_error_message(line: str) -> str:
 
 
 def analyze_log_file(
-    filepath: str, target_levels: Optional[List[str]] = None
+    filepath: str, target_levels: Optional[List[str]] = None, top_n: int = 20
 ) -> Dict:
     """Analyze a log file and return structured results.
 
@@ -148,7 +149,7 @@ def analyze_log_file(
         "total_lines": total_lines,
         "matched_lines": matched_lines,
         "level_counts": dict(level_counts),
-        "top_error_messages": error_messages.most_common(20),
+        "top_error_messages": error_messages.most_common(max(top_n, 20)),
         "hourly_distribution": dict(sorted(hourly_errors.items())),
         "sample_errors": sample_errors,
         "analyzed_at": datetime.now().isoformat(),
@@ -267,7 +268,7 @@ Examples:
         sys.exit(1)
 
     # Analyze
-    results = analyze_log_file(args.logfile, target_levels=args.level)
+    results = analyze_log_file(args.logfile, target_levels=args.level, top_n=args.top)
 
     # Format output
     if args.format == "json":

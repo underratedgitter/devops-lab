@@ -24,7 +24,7 @@ import logging
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify
-from redis import Redis, ConnectionError as RedisConnectionError
+from redis import Redis, RedisError
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -64,7 +64,7 @@ def get_redis_status():
     try:
         redis_client.ping()
         return {"connected": True, "host": REDIS_HOST, "port": REDIS_PORT}
-    except RedisConnectionError:
+    except RedisError:  # includes TimeoutError, which previously escaped as a 500
         return {"connected": False, "host": REDIS_HOST, "port": REDIS_PORT}
 
 
@@ -73,7 +73,7 @@ def home():
     """Home endpoint with visit counter."""
     try:
         visits = redis_client.incr("visit_count")
-    except RedisConnectionError:
+    except RedisError:
         visits = -1  # Indicates Redis is unavailable
 
     return jsonify({

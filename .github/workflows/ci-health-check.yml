@@ -2,12 +2,10 @@ name: Daily DevOps Lab Automation
 
 on:
   schedule:
-    # Four days a week (Mon–Thu; no runs Fri, Sat, Sun) instead of daily. All slots fall on the
-    # same calendar day in UTC and IST, so the day-of-week field means the same in both.
-    - cron: '30 2 * * 1-4'   # Primary run: 08:00 AM IST
-    - cron: '30 6 * * 1-4'   # Retry window: 12:00 PM IST
-    - cron: '30 12 * * 1-4'  # Retry window: 06:00 PM IST
-    - cron: '30 17 * * 1-4'  # Retry window: 11:00 PM IST
+    # Runs daily so the randomizer evaluates every day at 08:00 AM IST (02:30 UTC)
+    - cron: '30 2 * * *'
+    # Backup retry window at 12:00 PM IST (06:30 UTC)
+    - cron: '30 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -44,6 +42,46 @@ jobs:
           TODAY=$(TZ="Asia/Kolkata" date +'%Y-%m-%d')
           echo "today=${TODAY}" >> "${GITHUB_OUTPUT}"
 
+      - name: Evaluate 4-Day Random Weekly Schedule
+        id: schedule-check
+        run: |
+          python3 -c "
+          import hashlib, os, random, sys
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          if os.environ.get('EVENT_NAME') == 'workflow_dispatch':
+              print('Manual trigger via workflow_dispatch: forcing run.')
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('should_commit=true\n')
+              sys.exit(0)
+
+          now = datetime.now(ZoneInfo('Asia/Kolkata'))
+          year, week_num, weekday = now.isocalendar()
+          day_names = {1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'}
+
+          # Deterministic seed per ISO week ensures consistency across runs within the same week
+          seed_int = int(hashlib.sha256(f'devops-lab-v2-{year}-W{week_num}'.encode()).hexdigest(), 16)
+          rng = random.Random(seed_int)
+          active_days = set(rng.sample(range(1, 8), 4))
+
+          active_str = ', '.join([day_names[d] for d in sorted(active_days)])
+          today_name = day_names[weekday]
+
+          print(f'📅 ISO Week {year}-W{week_num:02d} randomized commit days: {active_str}')
+          print(f'📅 Today is: {today_name} (day {weekday})')
+
+          should_commit = (weekday in active_days)
+          print(f'⚡ Should commit today? {should_commit}')
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'should_commit={\"true\" if should_commit else \"false\"}\n')
+              f.write(f'active_days={active_str}\n')
+              f.write(f'today_name={today_name}\n')
+          "
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+
       - name: Validate Python Syntax
         run: |
           python3 -m py_compile python/*.py docker/examples/python-app/*.py scripts/*.py
@@ -78,14 +116,22 @@ jobs:
           "
 
       - name: Generate Daily DevOps Note
+        if: steps.schedule-check.outputs.should_commit == 'true'
         run: |
           python3 scripts/daily_updater.py
 
       - name: Commit & Push Daily Automation Updates
+        if: steps.schedule-check.outputs.should_commit == 'true'
         run: |
           mkdir -p automation/logs
           git config --local user.email "sp9023156004@gmail.com"
           git config --local user.name "Suraj Patel"
+
+          # Prevent duplicate commits on the same day if already committed
+          if git log -5 --format='%s' | grep -q "\[${{ steps.daily.outputs.today }}\]"; then
+            echo "Today's commit [${{ steps.daily.outputs.today }}] already exists in recent git history. Skipping duplicate commit."
+            exit 0
+          fi
 
           for BATCH in 1 2 3; do
             UTC_NOW=$(date -u '+%Y-%m-%d %H:%M:%S UTC')

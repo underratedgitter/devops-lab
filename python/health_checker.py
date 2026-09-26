@@ -36,7 +36,7 @@ import ssl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 @dataclass
@@ -252,7 +252,7 @@ def format_table(results: List[HealthResult]) -> str:
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Check HTTP endpoint availability and response times.",
         formatter_class=argparse.RawDescriptionHelpFormatter,

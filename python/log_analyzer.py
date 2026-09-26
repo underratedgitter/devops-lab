@@ -25,9 +25,9 @@ import json
 import os
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 # ---------------------------------------------------------------------------
 # Log level patterns — ordered by severity
@@ -219,7 +219,7 @@ def format_text_report(results: Dict, top_n: int = 10) -> str:
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Analyze log files and generate summary reports.",
         formatter_class=argparse.RawDescriptionHelpFormatter,

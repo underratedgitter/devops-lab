@@ -22,6 +22,8 @@ import sys
 import signal
 import logging
 from datetime import datetime, timezone
+from types import FrameType
+from typing import Optional
 
 from flask import Flask, jsonify
 from redis import Redis, RedisError
@@ -59,7 +61,7 @@ redis_client = Redis(
 )
 
 
-def get_redis_status():
+def get_redis_status() -> dict:
     """Check Redis connectivity and return status info."""
     try:
         redis_client.ping()
@@ -115,7 +117,7 @@ def info():
 # ---------------------------------------------------------------------------
 # Graceful Shutdown
 # ---------------------------------------------------------------------------
-def handle_shutdown(signum, frame):
+def handle_shutdown(signum: int, frame: Optional[FrameType]) -> None:
     """Handle shutdown signals gracefully."""
     sig_name = signal.Signals(signum).name
     logger.info("Received %s — shutting down gracefully", sig_name)

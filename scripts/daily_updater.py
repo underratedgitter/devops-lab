@@ -103,19 +103,19 @@ terraform force-unlock 5d2b781a-1234-5678-90ab-cdef12345678
 ]
 
 
-def generate_daily_entry():
+def generate_daily_entry() -> None:
     """Generate today's TIL file."""
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     today_str = now.strftime("%Y-%m-%d")
     daily_dir = "daily"
     os.makedirs(daily_dir, exist_ok=True)
-    
+
     file_path = os.path.join(daily_dir, f"{today_str}.md")
-    
+
     # Pick topic based on day of year
     day_of_year = now.timetuple().tm_yday
     topic_info = DAILY_TOPICS[day_of_year % len(DAILY_TOPICS)]
-    
+
     content = f"""# Daily DevOps Note — {today_str}
 
 **Category:** {topic_info['category']}  
